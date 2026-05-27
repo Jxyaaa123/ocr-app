@@ -6,10 +6,5 @@ _component_func = components.declare_component(
     path=os.path.join(os.path.dirname(os.path.abspath(__file__)), "frontend"),
 )
 
-def local_storage(key: str, value: str = "") -> str:
-    """Read/write a value from browser localStorage.
-    
-    On first render, returns the stored value (or empty string).
-    When `value` changes from Python, writes it to localStorage and returns it.
-    """
-    return _component_func(key=key, value=value, default="")
+def local_storage(storage_key: str, value: str = "") -> str:
+    return _component_func(storage_key=storage_key, value=value, default="")

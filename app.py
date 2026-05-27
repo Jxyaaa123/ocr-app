@@ -209,12 +209,15 @@ st.title("📊 图片表格识别工具")
 with st.sidebar:
     st.header("设置")
     saved_key = local_storage("ocr_api_key")
+    if "pending_api_key" in st.session_state:
+        local_storage("ocr_api_key_write", st.session_state.pending_api_key)
+        del st.session_state.pending_api_key
+        st.success("已保存，下次自动读取")
     api_key = st.text_input("API 密钥", type="password", value=saved_key or "",
                             help="阿里云 DashScope 获取")
     if st.button("保存 API Key"):
         if api_key.strip():
-            local_storage("ocr_api_key", api_key.strip())
-            st.success("已保存，下次自动读取")
+            st.session_state.pending_api_key = api_key.strip()
             st.rerun()
         else:
             st.error("请输入有效的 API Key")

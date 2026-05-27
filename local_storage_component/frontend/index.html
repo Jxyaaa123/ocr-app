@@ -5,7 +5,7 @@
 <script>
 function onRender(event) {
     const data = event.detail;
-    const storageKey = data.args.key || "api_key";
+    const storageKey = data.args.storage_key || "api_key";
     const newValue = data.args.value;
 
     if (newValue !== undefined && newValue !== null && newValue !== "") {
