@@ -5,8 +5,6 @@ import json
 import tempfile
 import base64
 import pandas as pd
-import cv2
-import numpy as np
 from PIL import Image
 from datetime import datetime
 from excel_export import export_to_excel
@@ -35,6 +33,8 @@ cfg = load_config()
 #  自动纠偏
 # ============================================================
 def auto_deskew(pil_img):
+    import cv2
+    import numpy as np
     img = np.array(pil_img.convert('RGB'))
     gray = cv2.cvtColor(img, cv2.COLOR_RGB2GRAY)
     edges = cv2.Canny(gray, 50, 150, apertureSize=3)
@@ -156,6 +156,7 @@ def calc_median(data):
     return round((nums[n // 2 - 1] + nums[n // 2]) / 2, 4)
 
 def calc_std(data):
+    import numpy as np
     nums = _to_nums(data)
     if len(nums) < 2:
         return ""
@@ -165,6 +166,7 @@ def calc_count(data):
     return sum(1 for v in data if str(v).strip())
 
 def calc_variance(data):
+    import numpy as np
     nums = _to_nums(data)
     if len(nums) < 2:
         return ""
@@ -172,6 +174,7 @@ def calc_variance(data):
 
 def calc_least_squares(x_data, y_data):
     """最小二乘法线性拟合 y = ax + b，返回 (a, b, r²)"""
+    import numpy as np
     xs = _to_nums(x_data)
     ys = _to_nums(y_data)
     pairs = list(zip(xs, ys))
