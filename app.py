@@ -1,5 +1,5 @@
 import streamlit as st
-from streamlit_local_storage import LocalStorage
+from local_storage_component import local_storage
 import streamlit.components.v1 as components
 import os
 import json
@@ -206,17 +206,15 @@ st.set_page_config(page_title="图片表格识别", page_icon="📊", layout="wi
 st.title("📊 图片表格识别工具")
 
 # 侧边栏设置
-ls = LocalStorage()
-
 with st.sidebar:
     st.header("设置")
-    saved_key = ls.getItem("user_api_key")
+    saved_key = local_storage("ocr_api_key")
     api_key = st.text_input("API 密钥", type="password", value=saved_key or "",
                             help="阿里云 DashScope 获取")
     if st.button("保存 API Key"):
         if api_key.strip():
-            ls.setItem("user_api_key", api_key.strip())
-            st.success("已保存")
+            local_storage("ocr_api_key", api_key.strip())
+            st.success("已保存，下次自动读取")
             st.rerun()
         else:
             st.error("请输入有效的 API Key")
@@ -228,6 +226,7 @@ with st.sidebar:
         save_config(cfg)
     if not api_key:
         st.warning("请输入 API 密钥")
+
 
 st.caption("上传图片 → 自动纠偏 / 手动旋转 → AI 识别 → 编辑修正 → 计算分析 → 导出")
 

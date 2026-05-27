@@ -1,0 +1,27 @@
+<!DOCTYPE html>
+<html>
+<body style="margin:0;padding:0;overflow:hidden;">
+<script src="https://cdn.jsdelivr.net/npm/@streamlit/component-lib@1.0.0/dist/streamlit-component-lib.js"></script>
+<script>
+function onRender(event) {
+    const data = event.detail;
+    const storageKey = data.args.key || "api_key";
+    const newValue = data.args.value;
+
+    if (newValue !== undefined && newValue !== null && newValue !== "") {
+        localStorage.setItem(storageKey, newValue);
+        window.Streamlit.setComponentValue(newValue);
+    } else {
+        const stored = localStorage.getItem(storageKey) || "";
+        window.Streamlit.setComponentValue(stored);
+    }
+}
+
+window.Streamlit.events.addEventListener(
+    window.Streamlit.EVENT_RENDER, onRender
+);
+window.Streamlit.setComponentReady();
+window.Streamlit.setFrameHeight(0);
+</script>
+</body>
+</html>
