@@ -2,7 +2,7 @@ import json
 import os
 from datetime import datetime
 
-DB_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), "corrections.json")
+DB_PATH = os.path.join("/tmp", "corrections.json")
 
 
 def _load() -> dict:

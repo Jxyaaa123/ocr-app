@@ -15,7 +15,7 @@ from corrections import save_corrections, get_all_corrections, delete_correction
 # ============================================================
 #  配置文件
 # ============================================================
-CONFIG_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), "config.json")
+CONFIG_PATH = os.path.join("/tmp", "config.json")
 
 def load_config():
     if os.path.exists(CONFIG_PATH):
