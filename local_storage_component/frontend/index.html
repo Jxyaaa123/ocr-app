@@ -1,27 +1,65 @@
 <!DOCTYPE html>
 <html>
 <body style="margin:0;padding:0;overflow:hidden;">
-<script src="https://cdn.jsdelivr.net/npm/@streamlit/component-lib@1.0.0/dist/streamlit-component-lib.js"></script>
 <script>
+// Streamlit Component API (standalone, no external dependency)
+var Streamlit = {
+    RENDER_EVENT: "streamlit:render",
+    events: new EventTarget(),
+    registeredMessageListener: false,
+
+    setComponentReady: function() {
+        if (!Streamlit.registeredMessageListener) {
+            window.addEventListener("message", Streamlit.onMessageEvent);
+            Streamlit.registeredMessageListener = true;
+        }
+        window.parent.postMessage({ isStreamlitMessage: true, type: "streamlit:componentReady", apiVersion: 1 }, "*");
+    },
+
+    setFrameHeight: function(height) {
+        if (height === undefined) height = document.body.scrollHeight;
+        window.parent.postMessage({ isStreamlitMessage: true, type: "streamlit:setFrameHeight", height: height }, "*");
+    },
+
+    setComponentValue: function(value) {
+        window.parent.postMessage({ isStreamlitMessage: true, type: "streamlit:setComponentValue", value: value, dataType: "json" }, "*");
+    },
+
+    onMessageEvent: function(event) {
+        if (event.data["type"] === Streamlit.RENDER_EVENT) {
+            var args = event.data["args"] || {};
+            var disabled = Boolean(event.data["disabled"]);
+            var theme = event.data["theme"];
+            if (theme) {
+                var style = document.createElement("style");
+                document.head.appendChild(style);
+                style.innerHTML = ":root { --primary-color: " + theme.primaryColor + "; --background-color: " + theme.backgroundColor + "; --text-color: " + theme.textColor + "; } body { background-color: var(--background-color); color: var(--text-color); }";
+            }
+            var event_detail = { disabled: disabled, args: args, theme: theme };
+            var customEvent = new CustomEvent(Streamlit.RENDER_EVENT, { detail: event_detail });
+            Streamlit.events.dispatchEvent(customEvent);
+        }
+    }
+};
+
+// Component logic
 function onRender(event) {
-    const data = event.detail;
-    const storageKey = data.args.storage_key || "api_key";
-    const newValue = data.args.value;
+    var data = event.detail;
+    var storageKey = data.args.storage_key || "api_key";
+    var newValue = data.args.value;
 
     if (newValue !== undefined && newValue !== null && newValue !== "") {
         localStorage.setItem(storageKey, newValue);
-        window.Streamlit.setComponentValue(newValue);
+        Streamlit.setComponentValue(newValue);
     } else {
-        const stored = localStorage.getItem(storageKey) || "";
-        window.Streamlit.setComponentValue(stored);
+        var stored = localStorage.getItem(storageKey) || "";
+        Streamlit.setComponentValue(stored);
     }
 }
 
-window.Streamlit.events.addEventListener(
-    window.Streamlit.EVENT_RENDER, onRender
-);
-window.Streamlit.setComponentReady();
-window.Streamlit.setFrameHeight(0);
+Streamlit.events.addEventListener(Streamlit.RENDER_EVENT, onRender);
+Streamlit.setComponentReady();
+Streamlit.setFrameHeight(0);
 </script>
 </body>
 </html>
