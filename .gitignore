@@ -1,0 +1,12 @@
+__pycache__/
+*.pyc
+config.json
+corrections.json
+history.db
+uploads/
+*.dll
+*.exe
+tessdata/
+test_ocr.png
+_test.png
+_debug_*.png

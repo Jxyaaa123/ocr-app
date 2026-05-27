@@ -1,0 +1,425 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>图片表格识别</title>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #f5f7fa; color: #333; min-height: 100vh; }
+.container { max-width: 960px; margin: 0 auto; padding: 16px; }
+h1 { text-align: center; font-size: 1.5rem; padding: 16px 0 8px; color: #1a73e8; }
+.subtitle { text-align: center; color: #666; font-size: 0.9rem; margin-bottom: 20px; }
+.tabs { display: flex; gap: 8px; margin-bottom: 16px; }
+.tab { flex: 1; padding: 12px; text-align: center; background: #fff; border: 2px solid #e0e0e0; border-radius: 10px; cursor: pointer; font-size: 1rem; font-weight: 600; transition: all 0.2s; }
+.tab.active { border-color: #1a73e8; color: #1a73e8; background: #e8f0fe; }
+.tab:hover { border-color: #1a73e8; }
+.card { background: #fff; border-radius: 12px; padding: 20px; margin-bottom: 16px; box-shadow: 0 2px 8px rgba(0,0,0,0.06); }
+.upload-area { border: 2px dashed #c4c4c4; border-radius: 12px; padding: 40px 20px; text-align: center; cursor: pointer; transition: all 0.3s; background: #fafafa; position: relative; }
+.upload-area:hover, .upload-area.dragover { border-color: #1a73e8; background: #e8f0fe; }
+.upload-area .icon { font-size: 3rem; margin-bottom: 12px; }
+.upload-area p { color: #666; margin: 6px 0; }
+.upload-area .hint { font-size: 0.85rem; color: #999; }
+#fileInput { display: none; }
+
+.preview-container { position: relative; display: none; margin: 12px 0; }
+.preview-img { max-width: 100%; max-height: 300px; border-radius: 8px; display: block; }
+.cancel-btn { position: absolute; top: 8px; right: 8px; width: 32px; height: 32px; background: rgba(234,67,53,0.9); color: #fff; border: none; border-radius: 50%; font-size: 1.2rem; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: background 0.2s; line-height: 1; }
+.cancel-btn:hover { background: rgba(197,34,31,1); }
+
+.btn { display: inline-block; padding: 12px 24px; border: none; border-radius: 8px; font-size: 1rem; font-weight: 600; cursor: pointer; transition: all 0.2s; width: 100%; text-align: center; }
+.btn-primary { background: #1a73e8; color: #fff; }
+.btn-primary:hover { background: #1557b0; }
+.btn-primary:disabled { background: #93b4e8; cursor: not-allowed; }
+.btn-success { background: #34a853; color: #fff; }
+.btn-success:hover { background: #2d8e47; }
+.btn-danger { background: #ea4335; color: #fff; }
+.btn-danger:hover { background: #c5221f; }
+.btn-outline { background: #fff; color: #1a73e8; border: 2px solid #1a73e8; }
+.btn-outline:hover { background: #e8f0fe; }
+.btn-group { display: flex; gap: 10px; margin-top: 12px; }
+.btn-group .btn { flex: 1; }
+
+.result-section { display: none; }
+.result-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; flex-wrap: wrap; gap: 8px; }
+.result-header h3 { font-size: 1.1rem; }
+.badge { background: #e8f0fe; color: #1a73e8; padding: 4px 10px; border-radius: 20px; font-size: 0.85rem; }
+.method-tag { background: #f0f9e8; color: #34a853; padding: 4px 10px; border-radius: 20px; font-size: 0.8rem; }
+.table-wrapper { overflow-x: auto; margin: 12px 0; -webkit-overflow-scrolling: touch; max-height: 50vh; overflow-y: auto; }
+table { width: 100%; border-collapse: collapse; font-size: 0.9rem; }
+th, td { border: 1px solid #e0e0e0; padding: 8px 12px; text-align: left; white-space: nowrap; min-width: 60px; }
+th { background: #f0f4f9; font-weight: 600; position: sticky; top: 0; z-index: 1; }
+td { background: #fff; }
+td:focus, th:focus { outline: 2px solid #1a73e8; outline-offset: -2px; background: #fffde7; }
+.loading { display: none; text-align: center; padding: 40px; }
+.spinner { width: 40px; height: 40px; border: 4px solid #e0e0e0; border-top-color: #1a73e8; border-radius: 50%; animation: spin 0.8s linear infinite; margin: 0 auto 16px; }
+@keyframes spin { to { transform: rotate(360deg); } }
+.history-item { border: 1px solid #e0e0e0; border-radius: 10px; padding: 14px; margin-bottom: 10px; background: #fff; }
+.history-item .meta { display: flex; justify-content: space-between; align-items: center; color: #666; font-size: 0.85rem; margin-bottom: 8px; flex-wrap: wrap; gap: 4px; }
+.history-item .actions { display: flex; gap: 8px; }
+.history-item .btn { padding: 8px 14px; font-size: 0.85rem; width: auto; }
+.history-detail { display: none; margin-top: 10px; }
+.history-detail.show { display: block; }
+.empty { text-align: center; padding: 40px; color: #999; }
+.toast { position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%); background: #333; color: #fff; padding: 12px 24px; border-radius: 8px; font-size: 0.9rem; z-index: 999; opacity: 0; transition: opacity 0.3s; pointer-events: none; max-width: 90vw; text-align: center; }
+.toast.show { opacity: 1; }
+.toast.error { background: #ea4335; }
+.toast.success { background: #34a853; }
+</style>
+</head>
+<body>
+<div class="container">
+    <h1>📊 图片表格识别</h1>
+    <p class="subtitle">上传表格图片，自动识别并导出 Excel</p>
+
+    <div class="tabs">
+        <div class="tab active" onclick="switchTab('ocr')">📷 识别导出</div>
+        <div class="tab" onclick="switchTab('history')">📋 历史记录</div>
+    </div>
+
+    <div id="tab-ocr">
+        <div class="card">
+            <div class="upload-area" id="uploadArea" onclick="document.getElementById('fileInput').click()">
+                <div class="icon">📤</div>
+                <p><strong>点击上传</strong> 或拖拽图片到这里</p>
+                <p class="hint">支持手机拍照 · 支持 PNG/JPG/BMP/TIFF/WebP</p>
+            </div>
+            <input type="file" id="fileInput" accept="image/*" capture="environment">
+
+            <div class="preview-container" id="previewContainer">
+                <button class="cancel-btn" id="cancelBtn" onclick="cancelImage(event)" title="取消图片">✕</button>
+                <img class="preview-img" id="previewImg">
+            </div>
+        </div>
+
+        <div class="loading" id="loading">
+            <div class="spinner"></div>
+            <p>正在识别中，请稍候...</p>
+        </div>
+
+        <div class="result-section" id="resultSection">
+            <div class="card">
+                <div class="result-header">
+                    <h3>识别结果</h3>
+                    <div>
+                        <span class="badge" id="resultBadge"></span>
+                        <span class="method-tag" id="methodTag"></span>
+                    </div>
+                </div>
+                <p style="color:#999; font-size:0.8rem; margin-bottom:8px;">点击单元格可编辑修正内容</p>
+                <div class="table-wrapper">
+                    <table id="resultTable"></table>
+                </div>
+                <div class="btn-group">
+                    <button class="btn btn-success" onclick="downloadExcel()">📥 下载 Excel</button>
+                    <button class="btn btn-outline" onclick="saveToHistory()">💾 保存记录</button>
+                    <button class="btn btn-outline" onclick="learnFromCorrections()">🧠 记住修正</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="tab-history" style="display:none;">
+        <div id="historyList"></div>
+    </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+let currentData = null;
+let originalData = null;
+let currentFileName = '识别结果';
+let currentImagePath = '';
+
+const methodNames = {
+    'cell_detection': '单元格检测',
+    'tsv_parse': '结构化解析',
+    'full_page': '全文识别',
+    'error': '失败'
+};
+
+// Tab switching
+function switchTab(tab) {
+    document.querySelectorAll('.tab').forEach((t, i) => {
+        t.classList.toggle('active', (tab === 'ocr' && i === 0) || (tab === 'history' && i === 1));
+    });
+    document.getElementById('tab-ocr').style.display = tab === 'ocr' ? 'block' : 'none';
+    document.getElementById('tab-history').style.display = tab === 'history' ? 'block' : 'none';
+    if (tab === 'history') loadHistory();
+}
+
+// File upload
+const uploadArea = document.getElementById('uploadArea');
+const fileInput = document.getElementById('fileInput');
+
+uploadArea.addEventListener('dragover', e => { e.preventDefault(); uploadArea.classList.add('dragover'); });
+uploadArea.addEventListener('dragleave', () => uploadArea.classList.remove('dragover'));
+uploadArea.addEventListener('drop', e => {
+    e.preventDefault();
+    uploadArea.classList.remove('dragover');
+    if (e.dataTransfer.files.length) handleFile(e.dataTransfer.files[0]);
+});
+fileInput.addEventListener('change', () => { if (fileInput.files.length) handleFile(fileInput.files[0]); });
+
+function handleFile(file) {
+    if (!file.type.startsWith('image/')) { showToast('请选择图片文件', 'error'); return; }
+    currentFileName = file.name;
+
+    const reader = new FileReader();
+    reader.onload = e => {
+        document.getElementById('previewImg').src = e.target.result;
+        document.getElementById('previewContainer').style.display = 'block';
+        uploadArea.style.display = 'none';
+    };
+    reader.readAsDataURL(file);
+
+    recognizeImage(file);
+}
+
+function cancelImage(e) {
+    if (e) e.stopPropagation();
+
+    document.getElementById('previewContainer').style.display = 'none';
+    document.getElementById('previewImg').src = '';
+    uploadArea.style.display = 'block';
+    document.getElementById('resultSection').style.display = 'none';
+    document.getElementById('loading').style.display = 'none';
+
+    fileInput.value = '';
+    currentData = null;
+    currentImagePath = '';
+    currentFileName = '识别结果';
+}
+
+async function recognizeImage(file) {
+    const loading = document.getElementById('loading');
+    const resultSection = document.getElementById('resultSection');
+    loading.style.display = 'block';
+    resultSection.style.display = 'none';
+
+    const formData = new FormData();
+    formData.append('file', file);
+
+    try {
+        const resp = await fetch('/api/ocr', { method: 'POST', body: formData });
+        const result = await resp.json();
+
+        if (!resp.ok) throw new Error(result.detail || '识别失败');
+
+        currentData = result.data;
+        originalData = JSON.parse(JSON.stringify(result.data));
+        currentImagePath = result.image_path;
+        renderTable(result.data);
+
+        document.getElementById('resultBadge').textContent = `${result.rows}行 × ${result.cols}列`;
+        document.getElementById('methodTag').textContent = methodNames[result.method] || result.method;
+        resultSection.style.display = 'block';
+
+        if (!result.success) {
+            showToast('识别完成，但结果可能不准确', 'error');
+        }
+    } catch (err) {
+        showToast(err.message, 'error');
+    } finally {
+        loading.style.display = 'none';
+    }
+}
+
+function renderTable(data) {
+    const table = document.getElementById('resultTable');
+    if (!data || !data.length) { table.innerHTML = '<tr><td>未识别到数据</td></tr>'; return; }
+
+    let html = '<thead><tr>';
+    data[0].forEach(cell => { html += `<th contenteditable="true">${escapeHtml(cell)}</th>`; });
+    html += '</tr></thead><tbody>';
+
+    for (let r = 1; r < data.length; r++) {
+        html += '<tr>';
+        data[r].forEach(cell => { html += `<td contenteditable="true">${escapeHtml(cell)}</td>`; });
+        html += '</tr>';
+    }
+    html += '</tbody>';
+    table.innerHTML = html;
+}
+
+function getTableData() {
+    const table = document.getElementById('resultTable');
+    const rows = table.querySelectorAll('tr');
+    const data = [];
+    rows.forEach(row => {
+        const cells = row.querySelectorAll('th, td');
+        const rowData = [];
+        cells.forEach(cell => rowData.push(cell.textContent.trim()));
+        data.push(rowData);
+    });
+    return data;
+}
+
+async function downloadExcel() {
+    const data = getTableData();
+    try {
+        const resp = await fetch('/api/export', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ data, filename: currentFileName.replace(/\.[^.]+$/, '') })
+        });
+        if (!resp.ok) throw new Error('导出失败');
+
+        const blob = await resp.blob();
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = currentFileName.replace(/\.[^.]+$/, '') + '.xlsx';
+        a.click();
+        URL.revokeObjectURL(url);
+        showToast('Excel 文件已下载', 'success');
+    } catch (err) {
+        showToast(err.message, 'error');
+    }
+}
+
+async function saveToHistory() {
+    const data = getTableData();
+    try {
+        const resp = await fetch('/api/history/save', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ data, image_path: currentImagePath })
+        });
+        const result = await resp.json();
+        if (!resp.ok) throw new Error(result.detail || '保存失败');
+        showToast(`已保存到历史记录 (ID: ${result.id})`, 'success');
+    } catch (err) {
+        showToast(err.message, 'error');
+    }
+}
+
+// History
+async function loadHistory() {
+    const container = document.getElementById('historyList');
+    try {
+        const resp = await fetch('/api/history');
+        const result = await resp.json();
+        const records = result.records;
+
+        if (!records.length) {
+            container.innerHTML = '<div class="empty">暂无历史记录</div>';
+            return;
+        }
+
+        let html = '';
+        records.forEach(r => {
+            html += `
+            <div class="history-item">
+                <div class="meta">
+                    <span>📄 记录 #${r.id} · ${r.row_count}行 × ${r.col_count}列</span>
+                    <span>${r.created_at}</span>
+                </div>
+                <div class="actions">
+                    <button class="btn btn-outline" onclick="toggleDetail(${r.id}, this)">展开</button>
+                    <a class="btn btn-success" href="/api/history/${r.id}/export">📥 下载</a>
+                    <button class="btn btn-danger" onclick="deleteHistory(${r.id})">删除</button>
+                </div>
+                <div class="history-detail" id="detail-${r.id}"></div>
+            </div>`;
+        });
+        container.innerHTML = html;
+    } catch (err) {
+        container.innerHTML = '<div class="empty">加载失败</div>';
+    }
+}
+
+async function toggleDetail(id, btn) {
+    const el = document.getElementById(`detail-${id}`);
+    if (el.classList.contains('show')) {
+        el.classList.remove('show');
+        el.innerHTML = '';
+        btn.textContent = '展开';
+        return;
+    }
+
+    try {
+        const resp = await fetch(`/api/history/${id}`);
+        const record = await resp.json();
+        const data = record.data;
+
+        let html = '<div class="table-wrapper"><table>';
+        data.forEach((row, i) => {
+            html += '<tr>';
+            row.forEach(cell => {
+                html += i === 0 ? `<th>${escapeHtml(cell)}</th>` : `<td>${escapeHtml(cell)}</td>`;
+            });
+            html += '</tr>';
+        });
+        html += '</table></div>';
+        el.innerHTML = html;
+        el.classList.add('show');
+        btn.textContent = '收起';
+    } catch (err) {
+        showToast('加载详情失败', 'error');
+    }
+}
+
+async function deleteHistory(id) {
+    if (!confirm('确定删除这条记录？')) return;
+    try {
+        await fetch(`/api/history/${id}`, { method: 'DELETE' });
+        showToast('已删除', 'success');
+        loadHistory();
+    } catch (err) {
+        showToast('删除失败', 'error');
+    }
+}
+
+async function learnFromCorrections() {
+    if (!originalData) { showToast('没有可学习的数据', 'error'); return; }
+
+    const currentTableData = getTableData();
+    const pairs = [];
+
+    for (let r = 0; r < originalData.length && r < currentTableData.length; r++) {
+        for (let c = 0; c < originalData[r].length && c < currentTableData[r].length; c++) {
+            const orig = (originalData[r][c] || '').trim();
+            const edited = (currentTableData[r][c] || '').trim();
+            if (orig && edited && orig !== edited) {
+                pairs.push({ ocr: orig, corrected: edited });
+            }
+        }
+    }
+
+    if (pairs.length === 0) {
+        showToast('没有检测到修正内容', 'error');
+        return;
+    }
+
+    try {
+        const resp = await fetch('/api/corrections', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ pairs })
+        });
+        if (!resp.ok) throw new Error('保存失败');
+        showToast(`已记住 ${pairs.length} 条修正，下次自动应用`, 'success');
+        // update originalData to current state
+        originalData = JSON.parse(JSON.stringify(currentTableData));
+    } catch (err) {
+        showToast(err.message, 'error');
+    }
+}
+
+function escapeHtml(text) {
+    const div = document.createElement('div');
+    div.textContent = text || '';
+    return div.innerHTML;
+}
+
+function showToast(msg, type) {
+    const toast = document.getElementById('toast');
+    toast.textContent = msg;
+    toast.className = 'toast show' + (type ? ' ' + type : '');
+    setTimeout(() => toast.className = 'toast', 2500);
+}
+</script>
+</body>
+</html>
