@@ -208,17 +208,18 @@ st.title("📊 图片表格识别工具")
 # 侧边栏设置
 with st.sidebar:
     st.header("设置")
-    saved_key = local_storage("ocr_api_key")
+    if "cached_api_key" not in st.session_state:
+        st.session_state.cached_api_key = local_storage("ocr_api_key") or ""
     if "pending_api_key" in st.session_state:
         local_storage("ocr_api_key_write", st.session_state.pending_api_key)
+        st.session_state.cached_api_key = st.session_state.pending_api_key
         del st.session_state.pending_api_key
         st.success("已保存，下次自动读取")
-    api_key = st.text_input("API 密钥", type="password", value=saved_key or "",
+    api_key = st.text_input("API 密钥", type="password", value=st.session_state.cached_api_key,
                             help="阿里云 DashScope 获取")
     if st.button("保存 API Key"):
         if api_key.strip():
             st.session_state.pending_api_key = api_key.strip()
-            st.rerun()
         else:
             st.error("请输入有效的 API Key")
     model_list = ["qwen-vl-plus", "qwen-vl-max"]
@@ -254,12 +255,15 @@ with tab1:
 
             st.markdown("**手动旋转：**")
 
-            buf = tempfile.NamedTemporaryFile(delete=False, suffix=".png")
-            pil_img.save(buf, format='PNG')
-            buf.close()
-            with open(buf.name, "rb") as f:
-                img_b64_for_js = base64.b64encode(f.read()).decode()
-            os.unlink(buf.name)
+            b64_cache_key = f"img_b64_{uploaded_file.name}_{pil_img.size}"
+            if b64_cache_key not in st.session_state:
+                buf = tempfile.NamedTemporaryFile(delete=False, suffix=".png")
+                pil_img.save(buf, format='PNG')
+                buf.close()
+                with open(buf.name, "rb") as f:
+                    st.session_state[b64_cache_key] = base64.b64encode(f.read()).decode()
+                os.unlink(buf.name)
+            img_b64_for_js = st.session_state[b64_cache_key]
 
             rotation_html = f"""
             <div style="text-align:center; padding:5px;">
@@ -384,7 +388,6 @@ with tab1:
                     data = [[""] * n_cols] + data
                     st.session_state['ocr_data'] = {"success": True, "data": data, "method": "edited"}
                     st.session_state['original_data'] = [row[:] for row in data]
-                    st.rerun()
 
                 if len(data) > 1:
                     cols = []
@@ -510,7 +513,6 @@ with tab1:
                             new_data = edited_df.values.tolist()
                             new_data.append(result_row)
                             st.session_state['ocr_data'] = {"success": True, "data": [col_list] + new_data, "method": "calc"}
-                            st.rerun()
 
                 # 行计算
                 with calc_tab2:
@@ -555,7 +557,6 @@ with tab1:
                             for i, row in enumerate(new_data):
                                 row.append(new_col_vals[i])
                             st.session_state['ocr_data'] = {"success": True, "data": [new_cols] + new_data, "method": "calc"}
-                            st.rerun()
 
                 # 最小二乘法
                 with calc_tab3:
